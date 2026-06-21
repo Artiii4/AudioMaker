@@ -1,0 +1,40 @@
+cmake_minimum_required(VERSION 3.10)
+project(AudioMaker VERSION 1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ---- Добавляем PortAudio как подпроект ----
+add_subdirectory(External/portaudio)
+
+# ---- Собираем все ваши .cpp файлы (в корневой папке) ----
+file(GLOB SOURCES "*.cpp")
+
+add_executable(AudioMaker ${SOURCES})
+
+# ---- Подключаем include-директорию PortAudio ----
+# После add_subdirectory у нас есть target portaudio (или portaudio_static)
+# Его include-директории уже добавлены к target, но чтобы быть уверенным,
+# явно добавляем папку include из External/portaudio:
+target_include_directories(AudioMaker PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/External/portaudio/include
+)
+
+# ---- Линкуем библиотеку PortAudio ----
+# В стандартном проекте PortAudio есть target "portaudio" (для shared библиотеки)
+# или "portaudio_static". Выберите нужный:
+target_link_libraries(AudioMaker PRIVATE portaudio)
+
+# ---- Дополнительные библиотеки Windows ----
+if(WIN32)
+    target_link_libraries(AudioMaker PRIVATE winmm)
+endif()
+
+# ---- Копируем portaudio.dll рядом с исполняемым файлом ----
+# В Windows динамическая библиотека нужна для запуска.
+add_custom_command(TARGET AudioMaker POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/External/portaudio/build/portaudio.dll"   # путь может отличаться!
+        $<TARGET_FILE_DIR:AudioMaker>
+    COMMENT "Копирование portaudio.dll"
+)
